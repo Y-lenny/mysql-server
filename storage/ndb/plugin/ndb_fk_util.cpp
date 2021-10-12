@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+   Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -117,32 +117,25 @@ const char *fk_split_name(char dst[], const char *src, bool index) {
 bool fetch_referenced_tables_from_ndb_dictionary(
     THD *thd, const char *schema_name, const char *table_name,
     std::set<std::pair<std::string, std::string>> &referenced_tables) {
-  DBUG_ENTER("fetch_referenced_tables_from_ndb_dictionary");
+  DBUG_TRACE;
   Thd_ndb *thd_ndb = get_thd_ndb(thd);
   Ndb *ndb = thd_ndb->ndb;
 
-  // save db
-  Ndb_db_guard db_guard(ndb);
-  if (ndb->setDatabaseName(schema_name) != 0) {
-    DBUG_PRINT("error", ("Error setting database '%s'. Error : %s", schema_name,
-                         ndb->getNdbError().message));
-    DBUG_RETURN(false);
-  }
-
-  NdbDictionary::Dictionary *dict = ndb->getDictionary();
-  Ndb_table_guard tab_guard(dict, table_name);
+  Ndb_table_guard tab_guard(ndb, schema_name, table_name);
   const NdbDictionary::Table *table = tab_guard.get_table();
   if (table == NULL) {
-    DBUG_PRINT("error", ("Unable to load table '%s.%s' from ndb. Error : %s",
-                         schema_name, table_name, dict->getNdbError().message));
-    DBUG_RETURN(false);
+    DBUG_PRINT("error",
+               ("Unable to load table '%s.%s' from NDB. Error : %s",
+                schema_name, table_name, tab_guard.getNdbError().message));
+    return false;
   }
 
   NdbDictionary::Dictionary::List obj_list;
+  NdbDictionary::Dictionary *dict = ndb->getDictionary();
   if (dict->listDependentObjects(obj_list, *table) != 0) {
     DBUG_PRINT("error", ("Unable to list dependents of '%s.%s'. Error : %s",
                          schema_name, table_name, dict->getNdbError().message));
-    DBUG_RETURN(false);
+    return false;
   }
   DBUG_PRINT("info", ("found %u dependent objects", obj_list.count));
 
@@ -159,7 +152,7 @@ bool fetch_referenced_tables_from_ndb_dictionary(
     if (dict->getForeignKey(fk, element.name) != 0) {
       DBUG_PRINT("error", ("Unable to fetch foreign key '%s'. Error : %s",
                            element.name, dict->getNdbError().message));
-      DBUG_RETURN(false);
+      return false;
     }
 
     char parent_db[FN_LEN + 1];
@@ -178,5 +171,45 @@ bool fetch_referenced_tables_from_ndb_dictionary(
         std::pair<std::string, std::string>(parent_db, parent_name));
   }
 
-  DBUG_RETURN(true);
+  return true;
+}
+
+/**
+  @brief Retrieve a list of foreign keys referencing the given table and on it.
+
+  @param dict          The NDB Dictionary object
+  @param table         The table whose foreign keys need to be retrieved
+  @param[out] fk_list  The output param that will have the list of foreign
+                       keys.
+  @return true on success or, false on failure to retrieve all the foreign keys.
+          On failure, the error can be retrieved from dict's NdbError object
+ */
+bool retrieve_foreign_key_list_from_ndb(NdbDictionary::Dictionary *dict,
+                                        const NdbDictionary::Table *table,
+                                        Ndb_fk_list *fk_list) {
+  DBUG_TRACE;
+
+  // Loop the dependant list and retrieve all FKs
+  NdbDictionary::Dictionary::List list;
+  if (dict->listDependentObjects(list, *table) != 0) {
+    DBUG_PRINT("error", ("Failed to list dependent objects for table '%s'",
+                         table->getName()));
+    return false;
+  }
+  for (unsigned i = 0; i < list.count; i++) {
+    NdbDictionary::Dictionary::List::Element element = list.elements[i];
+    if (element.type != NdbDictionary::Object::ForeignKey) continue;
+    NdbDictionary::ForeignKey fk;
+    if (dict->getForeignKey(fk, element.name) != 0) {
+      // Could not find the listed fk
+      assert(false);
+      DBUG_PRINT("error",
+                 ("Failed to retrieve the foreign key '%s'", element.name));
+      return false;
+    }
+    fk_list->emplace_back(fk);
+  }
+  DBUG_PRINT("info", ("Found %zu foreign keys in table %s", fk_list->size(),
+                      table->getName()));
+  return true;
 }

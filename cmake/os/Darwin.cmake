@@ -1,4 +1,4 @@
-# Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2010, 2021, Oracle and/or its affiliates.
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -24,6 +24,10 @@
 
 INCLUDE(CheckCSourceRuns)
 
+IF(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+  SET(APPLE_ARM 1)
+ENDIF()
+
 # We require at least XCode 9.0
 IF(NOT FORCE_UNSUPPORTED_COMPILER)
   IF(MY_COMPILER_IS_CLANG)
@@ -42,5 +46,15 @@ ENDIF()
 
 # This is used for the version_compile_machine variable.
 IF(CMAKE_SIZEOF_VOID_P MATCHES 8)
-  SET(MYSQL_MACHINE_TYPE "x86_64")
+  IF(APPLE_ARM)
+    SET(MYSQL_MACHINE_TYPE "arm64")
+  ELSE()
+    SET(MYSQL_MACHINE_TYPE "x86_64")
+  ENDIF()
 ENDIF()
+
+# Use Libtool -static rather than ranlib
+SET(CMAKE_C_CREATE_STATIC_LIBRARY
+  "/usr/bin/libtool -static -no_warning_for_no_symbols -o <TARGET> <LINK_FLAGS> <OBJECTS> ")
+SET(CMAKE_CXX_CREATE_STATIC_LIBRARY
+  "/usr/bin/libtool -static -no_warning_for_no_symbols -o <TARGET> <LINK_FLAGS> <OBJECTS> ")

@@ -1,14 +1,21 @@
 /*
-   Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+   Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; version 2 of the License.
+   it under the terms of the GNU General Public License, version 2.0,
+   as published by the Free Software Foundation.
+
+   This program is also distributed with certain software (including
+   but not limited to OpenSSL) that is licensed under separate terms,
+   as designated in a particular file or component or in included license
+   documentation.  The authors of MySQL hereby grant you an additional
+   permission to link the program and your derivative works with the
+   separately licensed software that they have included with MySQL.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GNU General Public License, version 2.0, for more details.
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
@@ -20,23 +27,23 @@
 #include <kernel_types.h>
 #include <Properties.hpp>
 #include <ndb_limits.h>
-#include <NdbOut.hpp>
 #include <ConfigSection.hpp>
 #include "ConfigObject.hpp"
 #include "ndb_net.h"
 #include <stdlib.h>
 #include <algorithm>
+#include <EventLogger.hpp>
 
 //#define DEBUG_MALLOC 1
 #ifdef DEBUG_MALLOC
-#define DEB_MALLOC(arglist) do { ndbout_c arglist ; } while (0)
+#define DEB_MALLOC(arglist) do { g_eventLogger->info arglist; } while (0)
 #else
 #define DEB_MALLOC(arglist) do { } while (0)
 #endif
 
 //#define DEBUG_UNPACK_V1 1
 #ifdef DEBUG_UNPACK_V1
-#define DEB_UNPACK_V1(arglist) do { ndbout_c arglist ; } while (0)
+#define DEB_UNPACK_V1(arglist) do { g_eventLogger->info arglist; } while (0)
 #else
 #define DEB_UNPACK_V1(arglist) do { } while (0)
 #endif
@@ -358,7 +365,7 @@ ConfigObject::get(ConfigSection *curr_section,
 bool
 ConfigObject::put(Uint32 key, Uint32 val)
 {
-  //ndbout_c("put(%u, %u)", key, val);
+  //g_eventLogger->info("put(%u, %u)", key, val);
   ConfigSection::Entry entry;
   entry.m_key = key;
   entry.m_type = ConfigSection::IntTypeId;
@@ -369,7 +376,7 @@ ConfigObject::put(Uint32 key, Uint32 val)
 bool
 ConfigObject::put64(Uint32 key, Uint64 val)
 {
-  //ndbout_c("put(%u, %llu)", key, val);
+  //g_eventLogger->info("put(%u, %llu)", key, val);
   ConfigSection::Entry entry;
   entry.m_key = key;
   entry.m_type = ConfigSection::Int64TypeId;
@@ -380,7 +387,7 @@ ConfigObject::put64(Uint32 key, Uint64 val)
 bool
 ConfigObject::put(Uint32 key, const char *str)
 {
-  //ndbout_c("put(%u, %s)", key, str);
+  //g_eventLogger->info("put(%u, %s)", key, str);
   ConfigSection::Entry entry;
   entry.m_key = key;
   entry.m_type = ConfigSection::StringTypeId;
@@ -397,7 +404,7 @@ ConfigObject::get_error_code() const
 void
 ConfigObject::print_error_code() const
 {
-  ndbout_c("ConfigObject::m_error_code = %u", m_error_code);
+  g_eventLogger->info("ConfigObject::m_error_code = %u", m_error_code);
 }
 
 bool
@@ -863,7 +870,7 @@ ConfigObject::create_default_sections()
       }
       default:
       {
-        ndbout_c("section_type: %u", section_type);
+        g_eventLogger->info("section_type: %u", section_type);
         require(false);
         break;
       }
@@ -949,7 +956,7 @@ ConfigObject::create_default_sections()
       }
       default:
       {
-        ndbout_c("section_type: %u", section_type);
+        g_eventLogger->info("section_type: %u", section_type);
         require(false);
         break;
       }
