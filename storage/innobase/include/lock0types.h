@@ -47,12 +47,12 @@ enum select_mode {
   SELECT_NOWAIT       /* return immediately if row is locked */
 };
 
-/* Basic lock modes */
+/* Basic lock modes 基础的锁模式*/
 enum lock_mode {
-  LOCK_IS = 0,          /* intention shared */
-  LOCK_IX,              /* intention exclusive */
-  LOCK_S,               /* shared */
-  LOCK_X,               /* exclusive */
+  LOCK_IS = 0,          /* intention shared 意向共享锁 */
+  LOCK_IX,              /* intention exclusive 意向排他锁 */
+  LOCK_S,               /* shared 共享锁 */
+  LOCK_X,               /* exclusive 排他锁 */
   LOCK_AUTO_INC,        /* locks the auto-inc counter of a table
                         in an exclusive mode */
   LOCK_NONE,            /* this is used elsewhere to note consistent read */
