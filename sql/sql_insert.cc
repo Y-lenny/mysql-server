@@ -463,7 +463,7 @@ bool Sql_cmd_insert_base::check_privileges(THD *thd) {
 
 /**
   Insert one or more rows from a VALUES list into a table
-
+  插入一个或更多记录行到表中
   @param thd   thread handler
 
   @returns false if success, true if error

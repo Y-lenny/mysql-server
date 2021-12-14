@@ -87,18 +87,18 @@ just in the case where the transaction modified the same record several times
 and another thread is currently doing the undo for successive versions of
 that index record. */
 
-/** Execution state of an undo node */
+/** Execution state of an undo node undo节点记录的执行状态 */
 enum undo_exec {
   UNDO_NODE_FETCH_NEXT = 1, /*!< we should fetch the next
                             undo log record */
   UNDO_NODE_INSERT,         /*!< undo a fresh insert of a
-                            row to a table */
+                            row to a table 在表记录行执行撤销一个插入的操作 */
   UNDO_NODE_MODIFY          /*!< undo a modify operation
                             (DELETE or UPDATE) on a row
-                            of a table */
+                            of a table 在表记录行执行撤销一个修改的操作 */
 };
 
-/** Undo node structure */
+/** Undo node structure undo节点的数据结构 */
 struct undo_node_t {
   que_common_t common;      /*!< node type: QUE_NODE_UNDO */
   enum undo_exec state;     /*!< node execution state */
@@ -112,7 +112,7 @@ struct undo_node_t {
                         record */
   btr_pcur_t pcur;          /*!< persistent cursor used in searching the
                             clustered index record */
-  dict_table_t *table;      /*!< table where undo is done */
+  dict_table_t *table;      /*!< table where undo is done undo关联的表 */
   ulint cmpl_info;          /*!< compiler analysis of an update */
   upd_t *update;            /*!< update vector for a clustered index
                             record */

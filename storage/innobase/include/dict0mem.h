@@ -850,7 +850,8 @@ class Spatial_reference_system;
 }
 
 /** Data structure for an index.  Most fields will be
-initialized to 0, NULL or FALSE in dict_mem_index_create(). */
+initialized to 0, NULL or FALSE in dict_mem_index_create().
+ 索引的数据结构。绝大部分初始化为0，null，false在索引创建的时候 */
 struct dict_index_t {
   space_index_t id;       /*!< id of the index */
   mem_heap_t *heap;       /*!< memory heap */

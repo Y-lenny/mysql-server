@@ -5582,7 +5582,7 @@ dberr_t lock_clust_rec_read_check_and_lock(
   }
 
   heap_no = page_rec_get_heap_no(rec);
-
+  /* 判断记录上是否存在隐式锁，如果存在则将其转换为显示锁 */
   if (heap_no != PAGE_HEAP_NO_SUPREMUM) {
     lock_rec_convert_impl_to_expl(block, rec, index, offsets);
   }
@@ -5599,7 +5599,7 @@ dberr_t lock_clust_rec_read_check_and_lock(
           lock_table_has(thr_get_trx(thr), index->table, LOCK_IX));
     ut_ad(mode != LOCK_S ||
           lock_table_has(thr_get_trx(thr), index->table, LOCK_IS));
-
+    /* 加S锁, 如果上面的隐式锁转化成功, 此处加锁将会等待, 直到活跃事务释放锁 */
     err = lock_rec_lock(false, sel_mode, mode | gap_mode, block, heap_no, index,
                         thr);
 

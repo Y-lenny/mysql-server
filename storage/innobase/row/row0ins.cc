@@ -1302,6 +1302,7 @@ nonstandard_exit_func:
 
 /** Sets a lock on a record. Used in locking possible duplicate key
  records and also in checking foreign key constraints.
+ 在记录上设置一个锁，锁在很可能会发生的唯一约束和外键约束的记录上。
 @param[in]	mode	requested lock type: LOCK_S or LOCK_X mode
 @param[in]	type	LOCK_ORDINARY, LOCK_GAP, or LOCK_REC_NOT_GAP type lock
 @param[in]	block	buffer block of rec
@@ -1801,13 +1802,14 @@ static MY_ATTRIBUTE((warn_unused_result)) dberr_t
 
 /** Checks if a unique key violation to rec would occur at the index entry
  insert.
+ 检查在插入索引记录时是否产生唯一键约束。
  @return true if error */
 static ibool row_ins_dupl_error_with_rec(
     const rec_t *rec,      /*!< in: user record; NOTE that we assume
                            that the caller already has a record lock on
                            the record! */
-    const dtuple_t *entry, /*!< in: entry to insert */
-    dict_index_t *index,   /*!< in: index */
+    const dtuple_t *entry, /*!< in: entry to insert 插入的实体 */
+    dict_index_t *index,   /*!< in: index 索引 */
     const ulint *offsets)  /*!< in: rec_get_offsets(rec, index) */
 {
   ulint matched_fields;
@@ -1852,6 +1854,7 @@ static bool row_allow_duplicates(que_thr_t *thr) {
 /** Scans a unique non-clustered index at a given index entry to determine
  whether a uniqueness violation has occurred for the key value of the entry.
  Set shared locks on possible duplicate records.
+ 扫描给定的索引记录在唯一非聚集索引是否发生了唯一性违规。对可能的重复记录设置共享锁。
  @return DB_SUCCESS, DB_DUPLICATE_KEY, or DB_LOCK_WAIT */
 static MY_ATTRIBUTE((warn_unused_result)) dberr_t
     row_ins_scan_sec_index_for_duplicate(
@@ -1890,11 +1893,11 @@ static MY_ATTRIBUTE((warn_unused_result)) dberr_t
   }
 
   /* Store old value on n_fields_cmp */
-
+  /* 只包含二级索引唯一键，不包括主键字段 */
   n_fields_cmp = dtuple_get_n_fields_cmp(entry);
 
   dtuple_set_n_fields_cmp(entry, n_unique);
-
+  /* 只包含二级索引唯一键, 返回时持有第一个满足条件记录所在的page latch */
   btr_pcur_open(
       index, entry, PAGE_CUR_GE,
       s_latch ? BTR_SEARCH_LEAF | BTR_ALREADY_S_LATCHED : BTR_SEARCH_LEAF,
@@ -2017,7 +2020,7 @@ static MY_ATTRIBUTE((warn_unused_result)) dberr_t
     } else {
       ut_a(is_next || index->allow_duplicates);
       goto end_scan;
-    }
+    }/* 扫描下一个记录，直到遇到第一个不同的记录 */
   } while (btr_pcur_move_to_next(&pcur, mtr));
 
 end_scan:
@@ -2105,18 +2108,19 @@ static MY_ATTRIBUTE((warn_unused_result)) dberr_t
 /** Checks if a unique key violation error would occur at an index entry
  insert. Sets shared locks on possible duplicate records. Works only
  for a clustered index!
- @retval DB_SUCCESS if no error
- @retval DB_DUPLICATE_KEY if error,
+ 在索引记录插入时是否会产生索引唯一约束异常。在可能发生重复记录上加上共享锁。
+ @retval DB_SUCCESS if no error 假如没有异常返回DB_SUCCESS
+ @retval DB_DUPLICATE_KEY if error,假如有异常返回DB_DUPLICATE_KEY
  @retval DB_LOCK_WAIT if we have to wait for a lock on a possible duplicate
- record
+ record 假如我们必须等待很可能发生重复记录上的锁就返回DB_LOCK_WAIT
  @retval DB_SUCCESS_LOCKED_REC if an exact match of the record was found
  in online table rebuild (flags & (BTR_KEEP_SYS_FLAG | BTR_NO_LOCKING_FLAG)) */
 static MY_ATTRIBUTE((warn_unused_result)) dberr_t
     row_ins_duplicate_error_in_clust(
-        ulint flags,           /*!< in: undo logging and locking flags */
-        btr_cur_t *cursor,     /*!< in: B-tree cursor */
-        const dtuple_t *entry, /*!< in: entry to insert */
-        que_thr_t *thr,        /*!< in: query thread */
+        ulint flags,           /*!< in: undo logging and locking flags 重做日志和锁标识 */
+        btr_cur_t *cursor,     /*!< in: B-tree cursor 索引游标 */
+        const dtuple_t *entry, /*!< in: entry to insert 插入的实体 */
+        que_thr_t *thr,        /*!< in: query thread 查询线程 */
         mtr_t *mtr)            /*!< in: mtr */
 {
   dberr_t err;
@@ -2180,7 +2184,7 @@ static MY_ATTRIBUTE((warn_unused_result)) dberr_t
         default:
           goto func_exit;
       }
-
+      /* S锁加锁完成之后，可以再次做判断，最终决定是否存在唯一键冲突*/
       if (row_ins_dupl_error_with_rec(rec, entry, cursor->index, offsets)) {
       duplicate:
         trx->error_index = cursor->index;
@@ -3064,6 +3068,7 @@ func_exit:
  then pessimistic descent down the tree. If the entry matches enough
  to a delete marked record, performs the insert by updating or delete
  unmarking the delete marked record.
+ 插入索引记录记录到聚簇索引上面。首先尝试乐观插入不行使用悲观插入。假如这个记录匹配到了一个被删除的记录，则进行插入更新或者删除被标记删除的记录。
  @return DB_SUCCESS, DB_LOCK_WAIT, DB_DUPLICATE_KEY, or some other error code */
 dberr_t row_ins_clust_index_entry(
     dict_index_t *index, /*!< in: clustered index */
@@ -3148,11 +3153,12 @@ and return. don't execute actual insert. */
  then pessimistic descent down the tree. If the entry matches enough
  to a delete marked record, performs the insert by updating or delete
  unmarking the delete marked record.
+ 插入索引记录到二级索引上面。首先尝试这乐观插入不行在悲观插入。假如实体有匹配到一个被删除记录则插入更新或者删除掉被标记删除的记录。
  @return DB_SUCCESS, DB_LOCK_WAIT, DB_DUPLICATE_KEY, or some other error code */
 dberr_t row_ins_sec_index_entry(
-    dict_index_t *index, /*!< in: secondary index */
-    dtuple_t *entry,     /*!< in/out: index entry to insert */
-    que_thr_t *thr,      /*!< in: query thread */
+    dict_index_t *index, /*!< in: secondary index 二级索引 */
+    dtuple_t *entry,     /*!< in/out: index entry to insert 索引记录 */
+    que_thr_t *thr,      /*!< in: query thread 查询线程 */
     bool dup_chk_only)
 /*!< in: if true, just do duplicate check
 and return. don't execute actual insert. */

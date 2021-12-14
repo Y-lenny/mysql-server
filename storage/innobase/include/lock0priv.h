@@ -536,7 +536,7 @@ waiting, in its lock queue. Solution: We can copy the locks as gap type
 locks, so that also the waiting locks are transformed to granted gap type
 locks on the inserted record. */
 
-/* LOCK COMPATIBILITY MATRIX
+/* LOCK COMPATIBILITY MATRIX 锁兼容性矩阵
     IS IX S  X  AI
  IS +	 +  +  -  +
  IX +	 +  -  -  +
